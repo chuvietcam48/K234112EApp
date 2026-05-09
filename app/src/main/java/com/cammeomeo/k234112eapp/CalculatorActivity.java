@@ -1,16 +1,21 @@
 package com.cammeomeo.k234112eapp;
 
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+
+import net.objecthunter.exp4j.Expression;
+import net.objecthunter.exp4j.ExpressionBuilder;
 
 public class CalculatorActivity extends AppCompatActivity {
 
@@ -54,12 +59,30 @@ public class CalculatorActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 //step 1: get data (formular)
-                String formular=edtFormula.getText().toString();
-                //step 2: invoke library for formular (find internet)...
-                String result="";
-                //result=library_nào_đó(formular)
-                //step 3:
-                edtFormula.setText(result);
+                String formula = edtFormula.getText().toString();
+                if (formula.isEmpty()) return;
+
+                try {
+                    //step 2: invoke library for formular
+                    // Replace special characters if necessary (e.g., 'x' to '*', '÷' to '/')
+                    String expressionText = formula.replace('x', '*').replace('÷', '/');
+                    Expression expression = new ExpressionBuilder(expressionText).build();
+                    double result = expression.evaluate();
+
+                    // Handle division by zero or invalid results
+                    if (Double.isInfinite(result) || Double.isNaN(result)) {
+                        Toast.makeText(CalculatorActivity.this, "Lỗi: Chia cho 0", Toast.LENGTH_SHORT).show();
+                    } else {
+                        //step 3: show result
+                        if (result == (long) result) {
+                            edtFormula.setText(String.valueOf((long) result));
+                        } else {
+                            edtFormula.setText(String.valueOf(result));
+                        }
+                    }
+                } catch (Exception e) {
+                    Toast.makeText(CalculatorActivity.this, "Lỗi định dạng toán học", Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
@@ -98,6 +121,25 @@ public class CalculatorActivity extends AppCompatActivity {
         txtMS=findViewById(R.id.txtMS);
         txtM=findViewById(R.id.txtM);
     }
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Save edtFormula content to SharedPreferences
+        SharedPreferences preferences = getSharedPreferences("CalculatorPrefs", MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putString("saved_formula", edtFormula.getText().toString());
+        editor.apply();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Restore edtFormula content from SharedPreferences
+        SharedPreferences preferences = getSharedPreferences("CalculatorPrefs", MODE_PRIVATE);
+        String savedFormula = preferences.getString("saved_formula", "");
+        edtFormula.setText(savedFormula);
+    }
+
     public void processInputData(View view) {
         Button btn_clicked= (Button) view;
         //old value:
